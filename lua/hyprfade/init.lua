@@ -13,43 +13,38 @@ local function find_terminal_pid()
 		return terminal_pid
 	end
 
-	local pid = vim.fn.getpid()
+	local pid = vim.uv.os_getppid() --[[@as integer]]
 	local max_hops = 25
-
 	for _ = 1, max_hops do
-		local status_file = "/proc/" .. pid .. "/status"
-		local ok, lines = pcall(vim.fn.readfile, status_file)
-		if not ok or not lines then
-			break
-		end
-
-		local name = nil
-		local ppid = nil
-		for _, line in ipairs(lines) do
-			if line:match("^Name:") then
-				name = line:match("^Name:%s+(.+)$")
-			elseif line:match("^PPid:") then
-				ppid = tonumber(line:match("^PPid:%s+(%d+)$"))
-			end
-		end
-
-		if name then
-			for _, term_name in ipairs(opts.term_names) do
-				if name == term_name then
-					terminal_pid = pid
-					return pid
+		local status_file = vim.fs.joinpath("/proc", tostring(pid), "status")
+		local ok, lines = pcall(vim.fn.readfile, status_file) ---@type boolean, string[]|nil|?
+		if ok and lines then
+			local name, ppid = nil, nil ---@type string|nil|?, integer|nil|?
+			for _, line in ipairs(lines) do
+				if line:match("^Name:") then
+					name = line:match("^Name:%s+.+$") --[[@as string|nil|?]]
+				elseif line:match("^PPid:") then
+					ppid = tonumber(line:match("^PPid:%s+(%d+)$"), 10)
 				end
 			end
-		end
 
-		if ppid and ppid > 1 then
+			if name then
+				for _, term_name in ipairs(opts.term_names) do
+					if name == term_name or name:find(term_name) then
+						terminal_pid = pid
+						return pid
+					end
+				end
+			end
+
+			if not ppid or ppid <= 1 then
+				break
+			end
 			pid = ppid
-		else
-			break
 		end
 	end
+end
 
-	return nil
 end
 
 -- Hyprland 0.55 (May 2026) replaced the classic `hyprctl dispatch <name>
@@ -98,7 +93,7 @@ local function set_opacity(value, inactive_value)
 		set_prop("opacity_inactive", inactive_value),
 	}
 
-	vim.system({ "hyprctl", "eval", table.concat(statements, "; ") }, nil, function() end)
+	vim.system({ "hyprctl", "eval", table.concat(statements, "; ") }, {}, function() end)
 	current = value
 end
 
