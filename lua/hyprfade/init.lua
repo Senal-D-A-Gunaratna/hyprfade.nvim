@@ -3,6 +3,7 @@ local M = {}
 
 ---@class hyprfadeOpts
 ---@field opacity number
+---@field opacity_inactive? number
 ---@field term_names string[]
 local opts = {}
 
