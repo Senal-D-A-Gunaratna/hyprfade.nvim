@@ -37,7 +37,7 @@ class hasn't been resolved yet. Matching on `pid:` sidesteps this entirely
   keys = {
     { "<leader>uo", "<cmd>HyprfadeToggle<cr>", desc = "Toggle window opacity" },
   },
-}
+},
 ```
 
 ## Configuration
