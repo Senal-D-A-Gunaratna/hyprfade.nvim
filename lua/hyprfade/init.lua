@@ -129,6 +129,14 @@ local function set_opacity(value, inactive_value)
 			window_selector = ("pid:%d"):format(pid)
 		else
 			window_selector = find_active_window_selector()
+			if window_selector then
+				vim.notify(
+					("hyprfade: terminal PID not found; using focused window (%s)"):format(
+						window_selector
+					),
+					vim.log.levels.INFO
+				)
+			end
 		end
 		window_target = window_selector
 	end
