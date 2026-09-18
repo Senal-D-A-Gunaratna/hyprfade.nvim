@@ -112,6 +112,8 @@ function M.check()
 	end
 	if pid then
 		health.ok(string.format("Terminal detected: %s (PID %d)", name, pid))
+	elseif vim.g.hyprfade_used_fallback then
+		health.warn("Currently using the active-window fallback (terminal PID wasn't resolvable)")
 	else
 		health.warn("Could not locate a supported terminal in the process tree", {
 			"hyprfade will fall back to the focused window if its class matches `term_names`",
@@ -136,15 +138,8 @@ function M.check()
 			})
 		end
 
-		local using_fallback = vim.g.hyprfade_used_fallback
-		if using_fallback ~= nil then
-			if using_fallback then
-				health.info(
-					"Currently using the active-window fallback (terminal PID wasn't resolvable)"
-				)
-			else
-				health.info("Currently using /proc PID detection to target the terminal window")
-			end
+		if vim.g.hyprfade_used_fallback == false then
+			health.info("Currently using /proc PID detection to target the terminal window")
 		end
 	end
 end
