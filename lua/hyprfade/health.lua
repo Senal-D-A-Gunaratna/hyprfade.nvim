@@ -1,7 +1,7 @@
 local health = vim.health or require("health")
 
 local function find_terminal_pid(term_names)
-	local pid = vim.fn.getpid()
+	local pid = vim.uv.os_getppid() --[[@as integer]]
 	local max_hops = 25
 
 	for _ = 1, max_hops do
@@ -39,7 +39,13 @@ local function find_terminal_pid(term_names)
 	return nil, nil
 end
 
-local function find_active_window()
+-- Mirrors hyprfade/init.lua's fallback resolution: queries the Hyprland IPC
+-- for the focused window and only honours it when the class matches a
+-- configured terminal name. Returns (nil, class) when the query succeeds but
+-- the class doesn't match, so health can explain why the fallback would no-op.
+---@param term_names string[]
+---@return string|nil, string|nil selector ("address:0x..."), focused class
+local function find_active_window(term_names)
 	local out = vim.fn.system({ "hyprctl", "activewindow", "-j" })
 	if vim.v.shell_error ~= 0 or type(out) ~= "string" or out == "null" then
 		return nil, nil
@@ -49,15 +55,18 @@ local function find_active_window()
 		return nil, nil
 	end
 	local class = win.class or win.initialClass
-	if
-		type(class) ~= "string"
-		or class == ""
-		or type(win.address) ~= "string"
-		or win.address == ""
-	then
+	if type(class) ~= "string" or class == "" then
 		return nil, nil
 	end
-	return win.address, class
+	if type(win.address) ~= "string" or win.address == "" then
+		return nil, class
+	end
+	for _, term_name in ipairs(term_names) do
+		if class == term_name then
+			return ("address:%s"):format(win.address), class
+		end
+	end
+	return nil, class
 end
 
 local M = {}
@@ -85,11 +94,8 @@ function M.check()
 			"Health checks beyond `hyprctl` availability will be limited",
 		})
 	else
-		local instance_dir = (
-			vim.fn.environ()["XDG_RUNTIME_DIR"] or "/run/user/" .. vim.fn.getuid()
-		)
-			.. "/hypr/"
-			.. hyprland_sig
+		local runtime_dir = vim.fn.environ()["XDG_RUNTIME_DIR"] or ("/run/user/" .. vim.fn.getuid())
+		local instance_dir = runtime_dir .. "/hypr/" .. hyprland_sig
 		if vim.fn.isdirectory(instance_dir) == 1 then
 			health.ok("Hyprland instance detected")
 		else
@@ -108,27 +114,26 @@ function M.check()
 		health.ok(string.format("Terminal detected: %s (PID %d)", name, pid))
 	else
 		health.warn("Could not locate a supported terminal in the process tree", {
-			"hyprfade will still work when called manually with a specific opacity",
-			"Only HyprfadeToggle and HyprfadeReset auto-detection will be affected",
+			"hyprfade will fall back to the focused window if its class matches `term_names`",
+			"Opacity won't be applied if the focused window isn't a known terminal",
 		})
 	end
 
-	local addr, class = find_active_window()
-	if not addr then
-		health.warn("Could not query the active window via `hyprctl activewindow -j`", {
-			"The active-window fallback will be unavailable if PID resolution fails",
-		})
-	else
-		local is_term = term_names and vim.tbl_contains(term_names, class) or false
-		if is_term then
-			health.ok(string.format("Active-window fallback available: %s (%s)", class, addr))
-		else
+	if term_names then
+		local selector, class = find_active_window(term_names)
+		if selector then
+			health.ok(string.format("Active-window fallback available: %s (%s)", class, selector))
+		elseif class then
 			health.warn(
 				string.format("The focused window (%s) is not a configured terminal", class),
 				{
 					"The active-window fallback won't match it if PID resolution fails",
 				}
 			)
+		else
+			health.warn("Could not query the active window via `hyprctl activewindow -j`", {
+				"The active-window fallback will be unavailable if PID resolution fails",
+			})
 		end
 	end
 end
