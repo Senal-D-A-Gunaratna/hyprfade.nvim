@@ -71,6 +71,13 @@ window via the Hyprland IPC (matching its class against `term_names`). If
 `opacity` is missing or invalid, `setup()` notifies at `ERROR` level and stops
 — the plugin won't activate.
 
+## Health check
+
+`:checkhealth hyprfade` reports whether the terminal was resolved by walking
+the `/proc` process tree (PID detection) or by the focused-window fallback, so
+you can quickly confirm which path is active and whether `term_names` matches
+your terminal. The status is tracked per-session in `vim.g.hyprfade_used_fallback`.
+
 ## Commands
 
 | Command            | Description                           |

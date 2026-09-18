@@ -12,7 +12,8 @@ CONTENTS                                          *hyprfade-contents*
   4. Configuration ............ |hyprfade-configuration|
   5. Commands ................. |hyprfade-commands|
   6. How opacity is applied ... |hyprfade-how|
-  7. Known limitations ........ |hyprfade-limitations|
+  7. Health check ............. |hyprfade-health|
+  8. Known limitations ........ |hyprfade-limitations|
 
 ==============================================================================
 1. INTRODUCTION                                  *hyprfade-introduction*
@@ -153,7 +154,16 @@ _after_ `VimEnter` has already completed for the session, so a `VimEnter`
 autocmd registered inside `setup()` would never fire.
 
 ==============================================================================
-7. KNOWN LIMITATIONS                            *hyprfade-limitations*
+7. HEALTH CHECK                                    *hyprfade-health*
+
+`:checkhealth hyprfade` reports whether the terminal was resolved by walking
+the `/proc` process tree (PID detection) or by the focused-window fallback,
+so you can quickly confirm which path is active and whether `term_names`
+matches your terminal. The status is tracked per-session in
+`vim.g.hyprfade_used_fallback`.
+
+==============================================================================
+8. KNOWN LIMITATIONS                            *hyprfade-limitations*
 
 PID resolution walks `/proc` upwards from Neovim's PID through the parent
 chain (up to 25 hops). If the ancestor chain reparents to PID 1 before hitting
