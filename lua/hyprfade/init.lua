@@ -10,7 +10,6 @@ local opts = {}
 local current = nil
 local terminal_pid = nil ---@type integer|nil|?
 local window_target = nil ---@type string|nil|?
-local used_fallback = false
 
 ---@param msg string
 local function warn(msg)
@@ -131,7 +130,6 @@ local function set_opacity(value, inactive_value)
 		else
 			window_selector = find_active_window_selector()
 			if window_selector then
-				used_fallback = true
 				vim.g.hyprfade_used_fallback = true
 				vim.notify(
 					("hyprfade: terminal PID not found; using focused window (%s)"):format(
@@ -210,7 +208,6 @@ function M.setup(user_opts)
 	current = nil
 	terminal_pid = nil
 	window_target = nil
-	used_fallback = false
 	vim.g.hyprfade_used_fallback = false
 
 	vim.api.nvim_create_user_command("Hyprfade", function(input)
