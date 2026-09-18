@@ -135,6 +135,17 @@ function M.check()
 				"The active-window fallback will be unavailable if PID resolution fails",
 			})
 		end
+
+		local using_fallback = vim.g.hyprfade_used_fallback
+		if using_fallback ~= nil then
+			if using_fallback then
+				health.info(
+					"Currently using the active-window fallback (terminal PID wasn't resolvable)"
+				)
+			else
+				health.info("Currently using /proc PID detection to target the terminal window")
+			end
+		end
 	end
 end
 
