@@ -39,6 +39,27 @@ local function find_terminal_pid(term_names)
 	return nil, nil
 end
 
+local function find_active_window()
+	local out = vim.fn.system({ "hyprctl", "activewindow", "-j" })
+	if vim.v.shell_error ~= 0 or type(out) ~= "string" or out == "null" then
+		return nil, nil
+	end
+	local ok, win = pcall(vim.json.decode, out)
+	if not ok or type(win) ~= "table" then
+		return nil, nil
+	end
+	local class = win.class or win.initialClass
+	if
+		type(class) ~= "string"
+		or class == ""
+		or type(win.address) ~= "string"
+		or win.address == ""
+	then
+		return nil, nil
+	end
+	return win.address, class
+end
+
 local M = {}
 
 function M.check()
@@ -90,6 +111,25 @@ function M.check()
 			"hyprfade will still work when called manually with a specific opacity",
 			"Only HyprfadeToggle and HyprfadeReset auto-detection will be affected",
 		})
+	end
+
+	local addr, class = find_active_window()
+	if not addr then
+		health.warn("Could not query the active window via `hyprctl activewindow -j`", {
+			"The active-window fallback will be unavailable if PID resolution fails",
+		})
+	else
+		local is_term = term_names and vim.tbl_contains(term_names, class) or false
+		if is_term then
+			health.ok(string.format("Active-window fallback available: %s (%s)", class, addr))
+		else
+			health.warn(
+				string.format("The focused window (%s) is not a configured terminal", class),
+				{
+					"The active-window fallback won't match it if PID resolution fails",
+				}
+			)
+		end
 	end
 end
 
