@@ -9,6 +9,7 @@ local opts = {}
 
 local current = nil
 local terminal_pid = nil ---@type integer|nil|?
+local window_target = nil ---@type string|nil|?
 
 ---@param msg string
 local function warn(msg)
@@ -55,13 +56,45 @@ end
 
 ---@param prop string
 ---@param val number
----@param pid integer
-local function set_prop(prop, val, pid)
+---@param window_selector string
+local function set_prop(prop, val, window_selector)
 	return ('hl.dispatch(hl.dsp.window.set_prop({ prop = "%s", value = %s, window = "%s" }))'):format(
 		prop,
 		tostring(val),
-		("pid:%d"):format(pid)
+		window_selector
 	)
+end
+
+---Fallback window resolution: when the /proc parent walk fails, ask the
+---Hyprland IPC which window currently holds focus (it will be the terminal
+---hosting Neovim) and target it by address. Only honored when the focused
+---window's class matches a name in opts.term_names, so we never fade an
+---arbitrary unrelated window.
+---@return string|nil|? window_selector ("address:0x...") or nil on failure
+local function find_active_window_selector()
+	local out = vim.fn.system({ "hyprctl", "activewindow", "-j" })
+	if vim.v.shell_error ~= 0 or type(out) ~= "string" or out == "null" then
+		return nil
+	end
+
+	local ok, win = pcall(vim.json.decode, out) ---@type boolean, table|nil|?
+	if not ok or type(win) ~= "table" then
+		return nil
+	end
+
+	local class = win.class or win.initialClass
+	if type(class) ~= "string" then
+		return nil
+	end
+	for _, term_name in ipairs(opts.term_names) do
+		if class == term_name then
+			if type(win.address) == "string" and win.address ~= "" then
+				return ("address:%s"):format(win.address)
+			end
+			return nil
+		end
+	end
+	return nil
 end
 
 -- Hyprland 0.55 (May 2026) replaced the classic `hyprctl dispatch <name>
@@ -89,17 +122,27 @@ local function set_opacity(value, inactive_value)
 		return
 	end
 
-	local pid = find_terminal_pid()
-	if not pid then
-		warn("could not resolve terminal PID")
+	local window_selector = window_target
+	if not window_selector then
+		local pid = find_terminal_pid()
+		if pid then
+			window_selector = ("pid:%d"):format(pid)
+		else
+			window_selector = find_active_window_selector()
+		end
+		window_target = window_selector
+	end
+
+	if not window_selector then
+		warn("could not resolve terminal PID or active window")
 		return
 	end
 
 	local statements = {
-		set_prop("opacity_override", 1, pid),
-		set_prop("opacity", value, pid),
-		set_prop("opacity_inactive_override", 1, pid),
-		set_prop("opacity_inactive", inactive_value, pid),
+		set_prop("opacity_override", 1, window_selector),
+		set_prop("opacity", value, window_selector),
+		set_prop("opacity_inactive_override", 1, window_selector),
+		set_prop("opacity_inactive", inactive_value, window_selector),
 	}
 
 	vim.system({ "hyprctl", "eval", table.concat(statements, "; ") }, {}, function() end)
@@ -155,6 +198,7 @@ function M.setup(user_opts)
 	end
 	current = nil
 	terminal_pid = nil
+	window_target = nil
 
 	vim.api.nvim_create_user_command("Hyprfade", function(input)
 		local val = tonumber(input.args)
