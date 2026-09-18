@@ -1,7 +1,7 @@
 # hyprfade.nvim
 
 Seamlessly fade the terminal window hosting Neovim on Hyprland by setting its
-window opacity via `hyprctl dispatch setprop pid:<pid> opacity`
+window opacity via the **Hyprland IPC**
 
 <https://github.com/user-attachments/assets/bb2bf4d1-1335-45f4-9c7e-646201cca975>
 
@@ -73,11 +73,11 @@ window via the Hyprland IPC (matching its class against `term_names`). If
 
 ## Commands
 
-| Command            | Description                                |
-| ------------------ | ------------------------------------------ |
-| `Hyprfade [value]` | Set opacity to a value (1 - 0.0)           |
-| `HyprfadeToggle`   | Toggle between `1` and opts `opacity`      |
-| `HyprfadeReset`    | Reset opacity to `1` (fully opaque)        |
+| Command            | Description                           |
+| ------------------ | ------------------------------------- |
+| `Hyprfade [value]` | Set opacity to a value (1 - 0.0)      |
+| `HyprfadeToggle`   | Toggle between `1` and opts `opacity` |
+| `HyprfadeReset`    | Reset opacity to `1` (fully opaque)   |
 
 ## How opacity is actually applied
 
@@ -125,7 +125,10 @@ the Hyprland IPC for the currently focused window (`hyprctl activewindow -j`)
 and targets it by address instead. The same `opacity` / `opacity_inactive`
 pair is applied, so the fade works even when the parent chain reparented
 (e.g. detached spawns). The focused window is only matched when its class is
-one of `term_names`, so an unrelated window is never dimmed.
+one of `term_names`, so an unrelated window is never dimmed. When the fallback
+kicks in you'll get a `vim.notify` at `INFO` level (e.g. "terminal PID not
+found; using focused window"), once per session — the resolved selector is
+cached, so it won't repeat on exit or on later `Hyprfade` calls.
 
 Opacity is applied immediately when `setup()` runs, rather than waiting for
 a `VimEnter` autocmd. This matters for lazy-loaded installs: lazy.nvim's
@@ -140,4 +143,5 @@ parent chain (up to 25 hops). If the ancestor chain reparents to PID 1 before
 hitting a known terminal name (e.g. some detached spawn paths), resolution
 fails and the plugin falls back to the active window. If the active window
 query also fails (or its class isn't a known terminal), a warning is logged
-via `vim.notify` and no opacity is applied.
+via `vim.notify` and no opacity is applied. When the fallback succeeds you
+get an `INFO` level notification naming the window it resolved to.

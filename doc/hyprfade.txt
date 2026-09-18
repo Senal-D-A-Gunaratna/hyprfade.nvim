@@ -141,7 +141,10 @@ the Hyprland IPC for the currently focused window (`hyprctl activewindow -j`)
 and targets it by address instead. The same `opacity` / `opacity_inactive`
 pair is applied, so the fade works even when the parent chain reparented
 (e.g. detached spawns). The focused window is only matched when its class is
-one of `term_names`, so an unrelated window is never dimmed.
+one of `term_names`, so an unrelated window is never dimmed. When the
+fallback kicks in you get a `vim.notify` at `INFO` level (e.g. "terminal PID
+not found; using focused window"), once per session — the resolved selector
+is cached, so it won't repeat on exit or on later `Hyprfade` calls.
 
 Opacity is applied immediately when |hyprfade-setup()| runs, rather than
 waiting for a `VimEnter` autocmd. This matters for lazy-loaded installs:
@@ -157,7 +160,8 @@ chain (up to 25 hops). If the ancestor chain reparents to PID 1 before hitting
 a known terminal name (e.g. some detached spawn paths), resolution fails and
 the plugin falls back to the active window. If the active window query also
 fails (or its class isn't a known terminal), a warning is logged via
-`vim.notify` and no opacity is applied.
+`vim.notify` and no opacity is applied. When the fallback succeeds you get an
+`INFO` level notification naming the window it resolved to.
 
 ==============================================================================
  vim:tw=78:ts=8:ft=help:norl:
