@@ -7,9 +7,12 @@ window opacity via the **Hyprland IPC**
 
 ## Why
 
+Lets you toggle the opacity of the terminal window from inside Neovim, so you
+can fade it while editing and bring it back to opaque whenever you like.
+
 Hyprland window rules based on `class` or `title` can miss the terminal window
 when Neovim is launched from a file manager like yazi, because the window's
-class hasn't been resolved yet. Matching on `pid:` sidesteps this entirely
+class hasn't been resolved yet. Matching on `pid:` sidesteps this entirely.
 
 ## Requirements
 

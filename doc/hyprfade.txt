@@ -18,8 +18,9 @@ CONTENTS                                          *hyprfade-contents*
 ==============================================================================
 1. INTRODUCTION                                  *hyprfade-introduction*
 
-hyprfade.nvim automatically adjusts the opacity of the terminal window hosting
-Neovim on Hyprland by issuing `hyprctl` commands matched by PID.
+hyprfade.nvim lets you toggle the opacity of the terminal window hosting
+Neovim, seamlessly fading it by setting window opacity via the Hyprland IPC
+(commands matched by PID).
 
 Hyprland window rules based on `class` or `title` can miss the terminal window
 when Neovim is launched from a file manager like yazi, because the window's
